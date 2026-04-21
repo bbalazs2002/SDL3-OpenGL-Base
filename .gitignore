@@ -1,0 +1,32 @@
+# --- CMake / Build Outputs ---
+# Minden build során keletkező fájl (az out/ mappa és tartalma)
+out/
+build/
+bin/
+lib/
+
+# --- Visual Studio ---
+# A VS által generált rejtett mappa (Intellisense, DB fájlok, stb.)
+.vs/
+# Felhasználóspecifikus beállítások (amit kértél)
+CMakeSettings.json
+# CMake Presets (opcionális, de gyakran lokális útvonalakat tartalmaz)
+CMakeUserPresets.json
+
+# --- vcpkg ---
+# A telepített könyvtárakat ne töltsd fel, a vcpkg.json alapján bárki újratelepítheti
+vcpkg_installed/
+
+# --- Fordító és rendszer specifikus fájlok ---
+*.exe
+*.dll
+*.pdb
+*.obj
+*.lib
+*.sln
+*.vcxproj
+*.user
+
+# --- Egyéb ---
+.DS_Store
+Thumbs.db
