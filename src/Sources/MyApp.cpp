@@ -2,6 +2,7 @@
 #include "../Utils/SDL_GLDebugMessageCallback.h"
 #include "../Utils/ObjParser.h"
 #include "../Utils/ProgramBuilder.h"
+#include "../Utils/Log.h"
 
 #include <imgui.h>
 #include <iostream>
@@ -20,8 +21,6 @@ MyApp::~MyApp()
 /////////////////////
 void MyApp::InitShaders()
 {
-	return;
-
 	InitAxesShader();
 	InitSkyboxShader();
 }
@@ -33,24 +32,26 @@ void MyApp::CleanShaders()
 void MyApp::InitSkyboxShader() {
 	m_programSkyboxID = glCreateProgram();
 	ProgramBuilder{ m_programSkyboxID }
-		.ShaderStage(GL_VERTEX_SHADER, "Shaders/Skybox/Vert_skybox.vert")
-		.ShaderStage(GL_FRAGMENT_SHADER, "Shaders/Skybox/Frag_skybox_skeleton.frag")
+		.ShaderStage(GL_VERTEX_SHADER, "src/Shaders/Skybox/Vert_skybox.vert")
+		.ShaderStage(GL_FRAGMENT_SHADER, "src/Shaders/Skybox/Frag_skybox_skeleton.frag")
 		.Link();
 }
 void MyApp::CleanSkyboxShader() {
 	glDeleteProgram(m_programSkyboxID);
+	m_programSkyboxID = 0;
 }
 void MyApp::InitAxesShader()
 {
 	m_programAxesID = glCreateProgram();
 	ProgramBuilder{ m_programAxesID }
-		.ShaderStage(GL_VERTEX_SHADER, "Shaders/Axes/Vert_axes.vert")
-		.ShaderStage(GL_FRAGMENT_SHADER, "Shaders/Axes/Frag_PosCol.frag")
+		.ShaderStage(GL_VERTEX_SHADER, "src/Shaders/Axes/Vert_axes.vert")
+		.ShaderStage(GL_FRAGMENT_SHADER, "src/Shaders/Axes/Frag_PosCol.frag")
 		.Link();
 }
 void MyApp::CleanAxesShader()
 {
 	glDeleteProgram(m_programAxesID);
+	m_programAxesID = 0;
 }
 
 //////////////////////
@@ -65,16 +66,16 @@ void MyApp::CleanGeometry()
 	CleanSkyboxGeometry();
 }
 void MyApp::InitSkyboxGeometry() {
-	// skybox geo
+	// skybox geometry
 	MeshObject<glm::vec3> skyboxCPU =
 	{
 		std::vector<glm::vec3>
 		{
-		// back
-		glm::vec3(-1, -1, -1),
-		glm::vec3(1, -1, -1),
-		glm::vec3(1,  1, -1),
-		glm::vec3(-1,  1, -1),
+			// back
+			glm::vec3(-1, -1, -1),
+			glm::vec3(1, -1, -1),
+			glm::vec3(1,  1, -1),
+			glm::vec3(-1,  1, -1),
 			// front
 			glm::vec3(-1, -1, 1),
 			glm::vec3(1, -1, 1),
@@ -84,9 +85,9 @@ void MyApp::InitSkyboxGeometry() {
 
 		std::vector<GLuint>
 		{
-		// back
-		0, 1, 2,
-		2, 3, 0,
+			// back
+			0, 1, 2,
+			2, 3, 0,
 			// front
 			4, 6, 5,
 			6, 4, 7,
@@ -150,6 +151,7 @@ void MyApp::InitSkyboxTexture() {
 }
 void MyApp::CleanSkyboxTexture() {
 	glDeleteTextures(1, &m_skyboxTextureID);
+	m_skyboxTextureID = 0;
 }
 
 ////////////////////////////
@@ -254,9 +256,6 @@ void MyApp::RenderSkybox() {
 void MyApp::Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-
-	return;
 
 	RenderSkybox();
 	if (m_showAxes) {

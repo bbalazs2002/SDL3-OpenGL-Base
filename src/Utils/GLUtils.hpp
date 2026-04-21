@@ -6,6 +6,8 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 
+#include "Log.h"
+
 /* 
 
 Az http://www.opengl-tutorial.org/ oldal alapján.
@@ -185,6 +187,3 @@ inline GLint ul( GLuint programID, const GLchar* uniformName ) noexcept
     // https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetUniformLocation.xhtml
     return glGetUniformLocation( programID, uniformName );
 }
-
-
-

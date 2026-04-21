@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <crtdbg.h>
 
+// Log (only in debug)
+#include "Utils/Log.h"
+
 // GLEW
 #include <GL/glew.h>
 
@@ -30,8 +33,9 @@ IGraphicsApp *app;
 int main(int argc, char* args[]) {
 
     // log memory leaks
+#ifdef DEBUG
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-
+#endif
 
     // --- 1. Initialize SDL ---
     SDL_SetLogPriority(SDL_LOG_CATEGORY_ERROR, SDL_LOG_PRIORITY_ERROR);
@@ -45,7 +49,7 @@ int main(int argc, char* args[]) {
     // --- 2. Configure OpenGL Attributes ---
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-#ifdef _DEBUG 
+#ifdef DEBUG 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif 
 
@@ -108,7 +112,16 @@ int main(int argc, char* args[]) {
         bool showImGui = true;
 
         app = new MyApp(); // Your application instance
-        app->Init();
+        if (!app->Init()) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "[APP] Initialization failed.");
+        }
+
+        // Call resize on the app
+        {
+            int w, h;
+            SDL_GetWindowSize(win, &w, &h);
+            app->Resize(w, h);
+        }
 
         while (!quit) {
             // Event Handling
@@ -118,29 +131,58 @@ int main(int argc, char* args[]) {
                 bool isMouseCaptured = ImGui::GetIO().WantCaptureMouse;
                 bool isKeyboardCaptured = ImGui::GetIO().WantCaptureKeyboard;
 
-                switch (ev.type) {
-                case SDL_EVENT_QUIT:
-                    quit = true;
-                    break;
-                case SDL_EVENT_KEY_DOWN:
-                    if (ev.key.key == SDLK_ESCAPE) quit = true;
+                switch (ev.type)
+                {
+                    case SDL_EVENT_QUIT:
+                        quit = true;
+                        break;
+                    case SDL_EVENT_KEY_DOWN:
 
-                    // ALT + ENTER: Toggle Fullscreen
-                    if ((ev.key.key == SDLK_RETURN) && (ev.key.mod & SDL_KMOD_ALT)) {
-                        bool isFull = (SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN);
-                        SDL_SetWindowFullscreen(win, !isFull);
-                    }
-                    // CTRL + F1: Toggle ImGui
-                    if ((ev.key.key == SDLK_F1) && (ev.key.mod & SDL_KMOD_CTRL)) {
-                        showImGui = !showImGui;
-                    }
-                    break;
-                case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-                    int w, h;
-                    SDL_GetWindowSize(win, &w, &h);
-                    // You might want to add a Resize(w, h) to your interface
-                    break;
+                        if (ev.key.key == SDLK_ESCAPE) quit = true;
+
+                        // ALT + ENTER: Toggle Fullscreen
+                        if ((ev.key.key == SDLK_RETURN) && (ev.key.mod & SDL_KMOD_ALT)) {
+                            bool isFull = (SDL_GetWindowFlags(win) & SDL_WINDOW_FULLSCREEN);
+                            SDL_SetWindowFullscreen(win, !isFull);
+                        }
+                        // CTRL + F1: Toggle ImGui
+                        if ((ev.key.key == SDLK_F1) && (ev.key.mod & SDL_KMOD_CTRL)) {
+                            showImGui = !showImGui;
+                        }
+                        break;
+
+                        if (!isKeyboardCaptured)
+                            app->KeyboardDown(ev.key);
+                        break;
+                    case SDL_EVENT_KEY_UP:
+                        if (!isKeyboardCaptured)
+                            app->KeyboardUp(ev.key);
+                        break;
+                    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                        if (!isMouseCaptured)
+                            app->MouseDown(ev.button);
+                        break;
+                    case SDL_EVENT_MOUSE_BUTTON_UP:
+                        if (!isMouseCaptured)
+                            app->MouseUp(ev.button);
+                        break;
+                    case SDL_EVENT_MOUSE_WHEEL:
+                        if (!isMouseCaptured)
+                            app->MouseWheel(ev.wheel);
+                        break;
+                    case SDL_EVENT_MOUSE_MOTION:
+                        if (!isMouseCaptured)
+                            app->MouseMove(ev.motion);
+                        break;
+                    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+                        int w, h;
+                        SDL_GetWindowSize(win, &w, &h);
+                        app->Resize(w, h);
+                        break;
+                    default:
+                        app->OtherEvent(ev);
                 }
+
             }
 
             // Create update info

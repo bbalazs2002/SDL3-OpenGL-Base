@@ -4,142 +4,187 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <regex>
+#include <set>
 
 #include <SDL3_image/SDL_image.h>
+
+#include "Log.h"
 
 #ifndef PROJECT_ROOT
 #pragma message(__FILE__ "("  ": warning: PROJECT_ROOT is not defined! Fallback route: ./")
 #define PROJECT_ROOT "./"
 #endif
 
-static void loadShaderCode( std::string& shaderCode, const std::filesystem::path& fileName )
-{
-	const std::filesystem::path fullPath = std::filesystem::path(PROJECT_ROOT) / fileName;
+///////////////////////////
+// --- SHADER LOADER --- //
+///////////////////////////
+static void loadShaderCode(std::string& shaderCode, const std::filesystem::path& fileAbsName) {
 
-	// shaderkod betoltese _fileName fajlbol
-	shaderCode = "";
+    // Open the stream starting at the end of the file (ate) to determine size immediately
+    std::ifstream shaderStream(fileAbsName, std::ios::in | std::ios::binary | std::ios::ate);
 
-	// _fileName megnyitasa
-	std::ifstream shaderStream(fullPath);
-	if ( !shaderStream.is_open() )
-	{
-		SDL_LogMessage( SDL_LOG_CATEGORY_ERROR,
-						SDL_LOG_PRIORITY_ERROR,
-						"Error while opening shader code file %s!", fullPath.string().c_str());
-		return;
-	}
+    if (!shaderStream.is_open()) {
+        LOG_ERROR("Error while opening shader file: ", fileAbsName.generic_string());
+        return;
+    }
 
-	// file tartalmanak betoltese a shaderCode string-be
-	std::string line = "";
-	while ( std::getline( shaderStream, line ) )
-	{
-		shaderCode += line + "\n";
-	}
+    // Get the file size and reserve memory in the string to avoid multiple reallocations
+    std::streamsize size = shaderStream.tellg();
+    shaderStream.seekg(0, std::ios::beg);
 
-	shaderStream.close();
+    shaderCode.clear();
+    if (size > 0) {
+        shaderCode.resize(static_cast<size_t>(size));
+        if (!shaderStream.read(shaderCode.data(), size)) {
+            LOG_ERROR("Error while reading shader file: ", fileAbsName.generic_string());
+            shaderCode.clear();
+        }
+    }
+
+    shaderStream.close();
 }
 
-GLuint AttachShader( const GLuint programID, GLenum shaderType, const std::filesystem::path& fileName )
-{
-	const std::filesystem::path fullPath = std::filesystem::path(PROJECT_ROOT) / fileName;
+// Recursive shader preprocessor to handle custom #include directives
+static void preprocessShaderCodeRecursive(std::string& sourceCode, const std::filesystem::path& currentAbsPath, std::set<std::string>& includedFiles) {
+    // Regex is static to avoid recompiling it for every recursive call
+    static const std::regex includeRegex(R"(#include\s*\"([^\"]+)\")");
+    std::smatch match;
 
-    // shaderkod betoltese _fileName fajlbol
-    std::string shaderCode;
-    loadShaderCode( shaderCode, fullPath);
+    std::ostringstream processedCode;
+    std::string::const_iterator searchStart(sourceCode.cbegin());
+    int currentLine = 1;
 
-    return AttachShaderCode( programID, shaderType, shaderCode );
-}
+    while (std::regex_search(searchStart, sourceCode.cend(), match, includeRegex)) {
+        // Append text before the #include directive
+        std::string segment(searchStart, match[0].first);
+        processedCode << segment;
+        currentLine += std::count(segment.begin(), segment.end(), '\n');
 
-GLuint AttachShaderCode( const GLuint programID, GLenum shaderType, std::string_view shaderCode )
-{
-	if (programID == 0)
-	{
-		SDL_LogMessage(SDL_LOG_CATEGORY_ERROR,
-						SDL_LOG_PRIORITY_ERROR,
-						"Program needs to be inited before loading!");
-		return 0;
-	}
+        // Resolve relative path
+        std::filesystem::path includePath = currentAbsPath.parent_path() / match[1].str();
 
-	// shader letrehozasa
-	GLuint shaderID = glCreateShader( shaderType );
+        std::error_code ec;
+        std::filesystem::path canonicalPath = std::filesystem::weakly_canonical(includePath, ec);
+        std::string uniqueKey = canonicalPath.generic_string();
 
-	// kod hozzarendelese a shader-hez
-	const char* sourcePointer = shaderCode.data();
-	GLint sourceLength = static_cast<GLint>( shaderCode.length() );
+        // Prevent circular or duplicate includes
+        if (!ec && includedFiles.find(uniqueKey) == includedFiles.end()) {
+            includedFiles.insert(uniqueKey);
+            LOG("\t - Shader preprocessor include: ", includePath.generic_string());
 
-	glShaderSource( shaderID, 1, &sourcePointer, &sourceLength );
+            std::string includedCode;
+            loadShaderCode(includedCode, includePath);
 
-	// shader leforditasa
-	glCompileShader( shaderID );
+            if (!includedCode.empty()) {
+                preprocessShaderCodeRecursive(includedCode, includePath, includedFiles);
 
-	// ellenorizzuk, h minden rendben van-e
-	GLint result = GL_FALSE;
-	int infoLogLength;
-
-	// forditas statuszanak lekerdezese
-	glGetShaderiv( shaderID, GL_COMPILE_STATUS, &result );
-	glGetShaderiv( shaderID, GL_INFO_LOG_LENGTH, &infoLogLength );
-
-	if ( GL_FALSE == result || infoLogLength != 0 )
-	{
-		// hibauzenet elkerese es kiirasa
-		std::string ErrorMessage( infoLogLength, '\0' );
-		glGetShaderInfoLog( shaderID, infoLogLength, NULL, ErrorMessage.data() );
-
-		SDL_LogMessage( SDL_LOG_CATEGORY_ERROR,
-						( result ) ? SDL_LOG_PRIORITY_WARN : SDL_LOG_PRIORITY_ERROR,
-						"[glCompileShader]: %s", ErrorMessage.data() );
-	}
-
-	// shader hozzarendelese a programhoz
-	glAttachShader( programID, shaderID );
-
-	return shaderID;
-
-}
-
-void LinkProgram( const GLuint programID, bool OwnShaders )
-{
-	// illesszük össze a shadereket (kimenő-bemenő változók összerendelése stb.)
-	glLinkProgram( programID );
-
-	// linkeles ellenorzese
-	GLint infoLogLength = 0, result = 0;
-
-	glGetProgramiv( programID, GL_LINK_STATUS, &result );
-	glGetProgramiv( programID, GL_INFO_LOG_LENGTH, &infoLogLength );
-	if ( GL_FALSE == result || infoLogLength != 0 )
-	{
-		std::string ErrorMessage( infoLogLength, '\0' );
-		glGetProgramInfoLog( programID, infoLogLength, nullptr, ErrorMessage.data() );
-		SDL_LogMessage( SDL_LOG_CATEGORY_ERROR,
-						( result ) ? SDL_LOG_PRIORITY_WARN : SDL_LOG_PRIORITY_ERROR,
-						"[glLinkProgram]: %s", ErrorMessage.data() );
-	}
-
-	// Ebben az esetben a program objektumhoz tartozik a shader objektum.
-	// Vagyis a shader objektumokat ki tudjuk "törölni".
-    // Szabvány szerint (https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDeleteShader.xhtml)
-    // a shader objektumok csak akkor törlődnek, ha nincsennek hozzárendelve egyetlen program objektumhoz sem.
-	// Vagyis mikor a program objektumot töröljük, akkor törlődnek a shader objektumok is.
-	if ( OwnShaders )
-	{
-		// kerjuk le a program objektumhoz tartozó shader objektumokat, ...
-        GLint attachedShaders = 0;
-        glGetProgramiv( programID, GL_ATTACHED_SHADERS, &attachedShaders );
-        std::vector<GLuint> shaders( attachedShaders );
-
-        glGetAttachedShaders( programID, attachedShaders, nullptr, shaders.data() );
-
-        // ... es "toroljuk" oket
-        for ( GLuint shader : shaders )
-        {
-            glDeleteShader( shader );
+                // Use #line to ensure shader compiler errors point to the correct file/line
+                processedCode << "\n#line 1\n" << includedCode << "\n#line " << (currentLine + 1) << "\n";
+            }
+        }
+        else {
+            processedCode << "// Skipped duplicate/missing include: " << match[1].str() << "\n";
         }
 
-	}
+        searchStart = match[0].second;
+    }
+
+    processedCode << std::string(searchStart, sourceCode.cend());
+    sourceCode = processedCode.str();
 }
 
+static void preprocessShaderCode(std::string& shaderCode, const std::filesystem::path& includerAbsPath) {
+    std::set<std::string> includedFiles;
+    std::error_code ec;
+    includedFiles.insert(std::filesystem::weakly_canonical(includerAbsPath, ec).generic_string());
+
+    // Basic protection: OpenGL requires #version to be the very first line.
+    // If found, we should ideally keep it at the top.
+    preprocessShaderCodeRecursive(shaderCode, includerAbsPath, includedFiles);
+}
+
+GLuint AttachShader(const GLuint programID, GLenum shaderType, const std::filesystem::path& fileName) {
+
+    std::filesystem::path fullPath = std::filesystem::path(PROJECT_ROOT) / fileName;
+
+    LOG("Loading shader file: ", fullPath.generic_string());
+
+    std::string shaderCode;
+    loadShaderCode(shaderCode, fullPath.generic_string());
+
+    preprocessShaderCode(shaderCode, fullPath);
+
+    return AttachShaderCode(programID, shaderType, shaderCode);
+}
+
+GLuint AttachShaderCode(const GLuint programID, GLenum shaderType, std::string_view shaderCode) {
+    if (programID == 0) {
+        LOG_ERROR("AttachShaderCode: Program ID is 0! Init program before loading shaders.");
+        return 0;
+    }
+
+    GLuint shaderID = glCreateShader(shaderType);
+    const char* sourcePointer = shaderCode.data();
+    GLint sourceLength = static_cast<GLint>(shaderCode.length());
+
+    glShaderSource(shaderID, 1, &sourcePointer, &sourceLength);
+    glCompileShader(shaderID);
+
+    GLint result = GL_FALSE;
+    int infoLogLength;
+    glGetShaderiv(shaderID, GL_COMPILE_STATUS, &result);
+    glGetShaderiv(shaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+    if (result == GL_FALSE && infoLogLength > 0) {
+        std::string errorMessage(infoLogLength, '\0');
+        glGetShaderInfoLog(shaderID, infoLogLength, nullptr, errorMessage.data());
+        LOG_ERROR("[glCompileShader Error]: ", errorMessage);
+    }
+
+    glAttachShader(programID, shaderID);
+    return shaderID;
+}
+
+void LinkProgram(const GLuint programID, bool ownShaders) {
+    if (programID == 0 || SDL_GL_GetCurrentContext() == nullptr) {
+        LOG_ERROR("LinkProgram: Invalid program ID or no GL context!");
+        return;
+    }
+
+    glLinkProgram(programID);
+
+    GLint linkStatus = GL_FALSE;
+    GLint infoLogLength = 0;
+    glGetProgramiv(programID, GL_LINK_STATUS, &linkStatus);
+    glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+    if (linkStatus == GL_FALSE && infoLogLength > 0) {
+        std::string errorMessage(infoLogLength, '\0');
+        glGetProgramInfoLog(programID, infoLogLength, nullptr, errorMessage.data());
+        LOG_ERROR("[glLinkProgram Error]: ", errorMessage);
+    }
+
+    // If the program owns the shaders, detach and delete them to save GPU memory
+    if (ownShaders) {
+        GLint attachedCount = 0;
+        glGetProgramiv(programID, GL_ATTACHED_SHADERS, &attachedCount);
+
+        if (attachedCount > 0) {
+            std::vector<GLuint> shaders(static_cast<size_t>(attachedCount));
+            glGetAttachedShaders(programID, attachedCount, nullptr, shaders.data());
+
+            for (GLuint shader : shaders) {
+                glDetachShader(programID, shader);
+                glDeleteShader(shader);
+            }
+        }
+    }
+}
+
+////////////////////////////
+// --- TEXTURE LOADER --- //
+////////////////////////////
 static inline ImageRGBA::TexelRGBA* get_image_row( ImageRGBA& image, int rowIndex )
 {
 	return &image.texelData[  rowIndex * image.width ];
@@ -174,55 +219,55 @@ GLsizei NumberOfMIPLevels( const ImageRGBA& image )
 	return targetlevel;
 }
 
-[[nodiscard]]
-ImageRGBA ImageFromFile(const std::filesystem::path& fileName, bool needsFlip) {
-	const std::filesystem::path fullPath = std::filesystem::path(PROJECT_ROOT) / fileName;
+[[nodiscard]] ImageRGBA ImageFromFile(const std::filesystem::path& fileName, bool needsFlip) {
+    const std::filesystem::path fullPath = std::filesystem::path(PROJECT_ROOT) / fileName;
+    LOG("Loading texture file: ", fullPath.generic_string());
 
-	ImageRGBA img;
+    ImageRGBA img;
 
-	// 1. Fájl megnyitása UTF-8 útvonallal
-	std::string pathStr = fullPath.u8string();
-	SDL_IOStream* stream = SDL_IOFromFile(pathStr.c_str(), "rb");
+    // 1. Open the file using UTF-8 path
+    std::string pathStr = fullPath.u8string();
+    SDL_IOStream* stream = SDL_IOFromFile(pathStr.c_str(), "rb");
 
-	if (!stream) {
-		SDL_Log("File not found: %s", pathStr.c_str());
-		return img;
-	}
+    if (!stream) {
+        LOG_ERROR("File not found: ", pathStr);
+        return img;
+    }
 
-	// 2. Betöltés - Az SDL3-image automatikusan felismeri a PNG/JPG stb. formátumot.
-	// A második paraméter 'true', így az IMG_Load_IO lezárja a stream-et helyettünk.
-	SDL_Surface* raw_surf = IMG_Load_IO(stream, true);
+    // 2. Load image - SDL3_image automatically detects formats like PNG, JPG, etc.
+    // The second parameter 'true' tells IMG_Load_IO to close the stream for us.
+    SDL_Surface* raw_surf = IMG_Load_IO(stream, true);
 
-	if (!raw_surf) {
-		// Ha itt "Unsupported format" hibát kapsz, akkor a vcpkg build-nél maradt ki a feature.
-		SDL_Log("IMG_Load error (%s): %s", pathStr.c_str(), SDL_GetError());
-		return img;
-	}
+    if (!raw_surf) {
+        // Note: If you get "Unsupported format", check if the feature was enabled during vcpkg build.
+        LOG_ERROR("IMG_Load error (", pathStr, "): ", SDL_GetError());
+        return img;
+    }
 
-	// 3. Smart pointer a biztonságos kezeléshez (SDL3-ban DestroySurface)
-	std::unique_ptr<SDL_Surface, decltype(&SDL_DestroySurface)> loaded_img(raw_surf, SDL_DestroySurface);
+    // 3. Use unique_ptr for safe resource management (using SDL_DestroySurface)
+    std::unique_ptr<SDL_Surface, decltype(&SDL_DestroySurface)> loaded_img(raw_surf, SDL_DestroySurface);
 
-	// 4. Konvertálás a kívánt formátumra (SDL3: SDL_ConvertSurface)
-	// Megjegyzés: Az SDL_PIXELFORMAT_RGBA32 egy "alias", ami mindig a jó bájtsorrendet választja.
-	SDL_Surface* formatted_raw = SDL_ConvertSurface(loaded_img.get(), SDL_PIXELFORMAT_RGBA32);
+    // 4. Convert surface to the desired format (RGBA32)
+    // Note: SDL_PIXELFORMAT_RGBA32 is an alias that ensures correct byte order.
+    SDL_Surface* formatted_raw = SDL_ConvertSurface(loaded_img.get(), SDL_PIXELFORMAT_RGBA32);
 
-	if (!formatted_raw) {
-		SDL_Log("Conversion error: %s", SDL_GetError());
-		return img;
-	}
+    if (!formatted_raw) {
+        LOG_ERROR("Conversion error: ", SDL_GetError());
+        return img;
+    }
 
-	std::unique_ptr<SDL_Surface, decltype(&SDL_DestroySurface)> formattedSurf(formatted_raw, SDL_DestroySurface);
+    std::unique_ptr<SDL_Surface, decltype(&SDL_DestroySurface)> formattedSurf(formatted_raw, SDL_DestroySurface);
 
-	// 5. Adatok áthelyezése a saját osztályodba
-	img.Assign(reinterpret_cast<const std::uint32_t*>(formattedSurf->pixels),
-		formattedSurf->w,
-		formattedSurf->h);
+    // 5. Transfer pixel data to the ImageRGBA object
+    img.Assign(reinterpret_cast<const std::uint32_t*>(formattedSurf->pixels),
+        formattedSurf->w,
+        formattedSurf->h);
 
-	if (needsFlip) {
-		invert_image_RGBA(img);
-	}
+    if (needsFlip) {
+        invert_image_RGBA(img);
+    }
 
-	return img;
+    return img;
 }
 
 void CleanOGLObject( OGLObject& ObjectGPU )

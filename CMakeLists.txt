@@ -21,11 +21,11 @@ find_package(imgui CONFIG REQUIRED) # ImGui often needs the CONFIG flag
 # 3. Add executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-# Enable experimental GLM extensions globally
-target_compile_definitions(${PROJECT_NAME} PRIVATE GLM_ENABLE_EXPERIMENTAL)
-
-# Define the project root directory path for the source code
-
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/"     # Define the project root directory path for the source code
+    GLM_ENABLE_EXPERIMENTAL                         # Enable experimental GLM extensions globally
+    $<$<CONFIG:Debug>:DEBUG>                        # Define DEBUG macro when CMake is in Debug mode
+)
 
 # 4. Link libraries (using the specific vcpkg targets)
 target_link_libraries(${PROJECT_NAME} PRIVATE 
