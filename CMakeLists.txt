@@ -33,7 +33,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     SDL3::SDL3 
     SDL3_image::SDL3_image
-    GLEW::GLEW        # Most likely target name in vcpkg
+    GLEW::GLEW
     glm::glm
     imgui::imgui
     tinyobjloader::tinyobjloader

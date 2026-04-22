@@ -1,6 +1,5 @@
 #include "../Headers/MyApp.h"
 #include "../Utils/SDL_GLDebugMessageCallback.h"
-#include "../Utils/ObjParser.h"
 #include "../Utils/ProgramBuilder.h"
 #include "../Utils/Log.h"
 
