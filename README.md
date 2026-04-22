@@ -53,7 +53,21 @@ The project is structured to separate low-level initialization from high-level a
 ### Utilities
 
 - **Asset Loading:** UTF-8 compliant texture loading and `.obj` model loading with full material (`.mtl`) support.  
-- **Rendering Support:** Predefined helpers for shader compilation and OpenGL resource management.  
+- **Rendering Support:** Predefined helpers for shader compilation and OpenGL resource management.
+
+### Shaders
+
+The project includes a modular shader system designed for reuse and clarity:
+
+- **`Shaders/`:** Contains all GLSL programs used in the rendering pipeline.  
+
+- **`Shaders/Modules/`:** Reusable GLSL modules shared across multiple shaders (e.g., common functions, material utilities).  
+  - Each module is documented separately. See: **[Shader Modules README](./Shaders/Modules/GLSL_modules_readme.md)**  
+
+- **Built-in Shaders:**
+  - **Model Shader:** A simple built-in shader for rendering 3D models with basic material support.
+  - **Skybox Shader:** Simple environment rendering for background and scene context.  
+  - **Axes Shader:** Renders orientation axes at the screen center, useful for spatial reference and debugging.
 
 ---
 
