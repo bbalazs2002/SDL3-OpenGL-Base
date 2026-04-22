@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <memory>
 
 MyApp::MyApp()
 {
@@ -21,11 +22,22 @@ MyApp::~MyApp()
 /////////////////////
 void MyApp::InitShaders()
 {
+
+	// models
+	m_programModelID = glCreateProgram();
+	ProgramBuilder{ m_programModelID }
+		.ShaderStage(GL_VERTEX_SHADER, "src/Shaders/Models/Vert_Model.vert")
+		.ShaderStage(GL_FRAGMENT_SHADER, "src/Shaders/Models/Frag_Model.frag")
+		.Link();
+
 	InitAxesShader();
 	InitSkyboxShader();
 }
 void MyApp::CleanShaders()
 {
+	glDeleteProgram(m_programModelID);
+	m_programModelID = 0;
+
 	CleanSkyboxShader();
 	CleanAxesShader();
 }
@@ -59,6 +71,26 @@ void MyApp::CleanAxesShader()
 //////////////////////
 void MyApp::InitGeometry()
 {
+
+	// Equinox from .obj file with .mtl
+	m_model = std::make_unique<Model>(
+		ModelParams{
+			ShaderProgramCollection{
+				m_programModelID
+			},
+			"Equinox",
+			true
+		}
+	);
+	m_model.get()->SetObjPath("Assets/Equinox-render/Equinox.obj");
+	m_model.get()->AddTransform(glm::transpose(glm::mat4{
+			{ 1, 0, 0, 0 },
+			{ 0, 1, 0, 5 },
+			{ 0, 0, 1, 0 },
+			{ 0, 0, 0, 1 }
+		}
+	));
+
 	InitSkyboxGeometry();
 }
 void MyApp::CleanGeometry()
@@ -256,6 +288,12 @@ void MyApp::RenderSkybox() {
 void MyApp::Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// render model
+	const RenderParams rp{
+		1.f, m_camera.GetEye(), 0, glm::ivec2(m_width, m_height), m_camera.GetViewProj()
+	};
+	m_model.get()->Render(rp);
 
 	RenderSkybox();
 	if (m_showAxes) {

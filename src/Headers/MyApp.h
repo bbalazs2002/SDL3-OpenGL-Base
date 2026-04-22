@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <memory>
 
 // GLM
 #include <glm/glm.hpp>
@@ -22,6 +23,8 @@
 
 // Interface
 #include "../Interfaces/IGraphicsApp.h"
+
+#include "Model/Model.h"
 
 class MyApp : public IGraphicsApp
 {
@@ -51,12 +54,14 @@ protected:
 	// Variables
 	float m_ElapsedTimeInSec = 0.0f;
 	int m_width = 640, m_height = 480;
+	std::unique_ptr<Model> m_model;
 
 	// Camera
 	Camera m_camera;
 	CameraManipulator m_cameraManipulator;
 
 	// Shader variables
+	GLuint m_programModelID = 0;		// Program rendering models
 	GLuint m_programAxesID = 0;			// Program showing X,Y,Z directions
 	GLuint m_programSkyboxID = 0;		// Skybox shaders
 
@@ -78,6 +83,7 @@ protected:
 	void CleanSkyboxGeometry();
 
 	// Textures
+	GLuint m_modelTextureID = 0;
 	GLuint m_skyboxTextureID = 0;
 
 	// Texture initialization

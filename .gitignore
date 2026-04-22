@@ -18,11 +18,6 @@ CMakeUserPresets.json
 vcpkg_installed/
 
 # --- Fordító és rendszer specifikus fájlok ---
-*.exe
-*.dll
-*.pdb
-*.obj
-*.lib
 *.sln
 *.vcxproj
 *.user

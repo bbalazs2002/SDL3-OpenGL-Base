@@ -17,11 +17,13 @@ find_package(SDL3_image REQUIRED)
 find_package(GLEW REQUIRED) # Use uppercase GLEW
 find_package(glm REQUIRED)
 find_package(imgui CONFIG REQUIRED) # ImGui often needs the CONFIG flag
+find_package(tinyobjloader CONFIG REQUIRED)
 
 # 3. Add executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+    interface=struct
     PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/"     # Define the project root directory path for the source code
     GLM_ENABLE_EXPERIMENTAL                         # Enable experimental GLM extensions globally
     $<$<CONFIG:Debug>:DEBUG>                        # Define DEBUG macro when CMake is in Debug mode
@@ -34,4 +36,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     GLEW::GLEW        # Most likely target name in vcpkg
     glm::glm
     imgui::imgui
+    tinyobjloader::tinyobjloader
 )

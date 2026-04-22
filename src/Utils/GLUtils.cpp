@@ -25,7 +25,7 @@ static void loadShaderCode(std::string& shaderCode, const std::filesystem::path&
     std::ifstream shaderStream(fileAbsName, std::ios::in | std::ios::binary | std::ios::ate);
 
     if (!shaderStream.is_open()) {
-        LOG_ERROR("Error while opening shader file: ", fileAbsName.generic_string());
+        LOG_ERROR("[GLUtils] Error while opening shader: ", fileAbsName.generic_string());
         return;
     }
 
@@ -37,7 +37,7 @@ static void loadShaderCode(std::string& shaderCode, const std::filesystem::path&
     if (size > 0) {
         shaderCode.resize(static_cast<size_t>(size));
         if (!shaderStream.read(shaderCode.data(), size)) {
-            LOG_ERROR("Error while reading shader file: ", fileAbsName.generic_string());
+            LOG_ERROR("[GLUtils] Error while reading shader: ", fileAbsName.generic_string());
             shaderCode.clear();
         }
     }
@@ -108,7 +108,7 @@ GLuint AttachShader(const GLuint programID, GLenum shaderType, const std::filesy
 
     std::filesystem::path fullPath = std::filesystem::path(PROJECT_ROOT) / fileName;
 
-    LOG("Loading shader file: ", fullPath.generic_string());
+    LOG("[GLUtils] Loading shader: ", fullPath.generic_string());
 
     std::string shaderCode;
     loadShaderCode(shaderCode, fullPath.generic_string());
@@ -120,7 +120,7 @@ GLuint AttachShader(const GLuint programID, GLenum shaderType, const std::filesy
 
 GLuint AttachShaderCode(const GLuint programID, GLenum shaderType, std::string_view shaderCode) {
     if (programID == 0) {
-        LOG_ERROR("AttachShaderCode: Program ID is 0! Init program before loading shaders.");
+        LOG_ERROR("[GLUtils] AttachShaderCode: Program ID is 0! Init program before loading shaders.");
         return 0;
     }
 
@@ -139,7 +139,7 @@ GLuint AttachShaderCode(const GLuint programID, GLenum shaderType, std::string_v
     if (result == GL_FALSE && infoLogLength > 0) {
         std::string errorMessage(infoLogLength, '\0');
         glGetShaderInfoLog(shaderID, infoLogLength, nullptr, errorMessage.data());
-        LOG_ERROR("[glCompileShader Error]: ", errorMessage);
+        LOG_ERROR("[GLUtils] glCompileShader Error: ", errorMessage);
     }
 
     glAttachShader(programID, shaderID);
@@ -148,7 +148,7 @@ GLuint AttachShaderCode(const GLuint programID, GLenum shaderType, std::string_v
 
 void LinkProgram(const GLuint programID, bool ownShaders) {
     if (programID == 0 || SDL_GL_GetCurrentContext() == nullptr) {
-        LOG_ERROR("LinkProgram: Invalid program ID or no GL context!");
+        LOG_ERROR("[GLUtils] LinkProgram: Invalid program ID or no GL context!");
         return;
     }
 
@@ -162,7 +162,7 @@ void LinkProgram(const GLuint programID, bool ownShaders) {
     if (linkStatus == GL_FALSE && infoLogLength > 0) {
         std::string errorMessage(infoLogLength, '\0');
         glGetProgramInfoLog(programID, infoLogLength, nullptr, errorMessage.data());
-        LOG_ERROR("[glLinkProgram Error]: ", errorMessage);
+        LOG_ERROR("[GLUtils] glLinkProgram Error: ", errorMessage);
     }
 
     // If the program owns the shaders, detach and delete them to save GPU memory
@@ -221,7 +221,7 @@ GLsizei NumberOfMIPLevels( const ImageRGBA& image )
 
 [[nodiscard]] ImageRGBA ImageFromFile(const std::filesystem::path& fileName, bool needsFlip) {
     const std::filesystem::path fullPath = std::filesystem::path(PROJECT_ROOT) / fileName;
-    LOG("Loading texture file: ", fullPath.generic_string());
+    LOG("[GLUtils] Loading texture: ", fullPath.generic_string());
 
     ImageRGBA img;
 
@@ -230,7 +230,7 @@ GLsizei NumberOfMIPLevels( const ImageRGBA& image )
     SDL_IOStream* stream = SDL_IOFromFile(pathStr.c_str(), "rb");
 
     if (!stream) {
-        LOG_ERROR("File not found: ", pathStr);
+        LOG_ERROR("[GLUtils] File not found: ", pathStr);
         return img;
     }
 
@@ -240,7 +240,7 @@ GLsizei NumberOfMIPLevels( const ImageRGBA& image )
 
     if (!raw_surf) {
         // Note: If you get "Unsupported format", check if the feature was enabled during vcpkg build.
-        LOG_ERROR("IMG_Load error (", pathStr, "): ", SDL_GetError());
+        LOG_ERROR("[GLUtils] IMG_Load error (", pathStr, "): ", SDL_GetError());
         return img;
     }
 
@@ -252,7 +252,7 @@ GLsizei NumberOfMIPLevels( const ImageRGBA& image )
     SDL_Surface* formatted_raw = SDL_ConvertSurface(loaded_img.get(), SDL_PIXELFORMAT_RGBA32);
 
     if (!formatted_raw) {
-        LOG_ERROR("Conversion error: ", SDL_GetError());
+        LOG_ERROR("[GLUtils] Conversion error: ", SDL_GetError());
         return img;
     }
 

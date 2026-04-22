@@ -1,16 +1,12 @@
 #pragma once
 
-struct SUpdateInfo
-{
-    float ElapsedTimeInSec = 0.0f;	// Elapsed time since start of the program
-    float DeltaTimeInSec = 0.0f;	// Elapsed time since last update
-};
+#include "../Headers/Types.h"
 
 /**
  * @brief Abstract interface for graphics applications.
  * Any application class must inherit from this and implement its methods.
  */
-class IGraphicsApp {
+interface IGraphicsApp {
 public:
     // Virtual destructor is crucial for proper cleanup of derived classes
     virtual ~IGraphicsApp() = default;
