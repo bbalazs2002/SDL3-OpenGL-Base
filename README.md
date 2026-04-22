@@ -62,7 +62,7 @@ The project includes a modular shader system designed for reuse and clarity:
 - **`Shaders/`:** Contains all GLSL programs used in the rendering pipeline.  
 
 - **`Shaders/Modules/`:** Reusable GLSL modules shared across multiple shaders (e.g., common functions, material utilities).  
-  - Each module is documented separately. See: **[Shader Modules README](./Shaders/Modules/GLSL_modules_readme.md)**  
+  - Each module is documented separately. See: **[Shader Modules README](./src/Shaders/Modules/GLSL_modules_readme.md)**  
 
 - **Built-in Shaders:**
   - **Model Shader:** A simple built-in shader for rendering 3D models with basic material support.
