@@ -95,6 +95,7 @@ protected:
 	// rendering methods
 	void RenderAxes();
 	void RenderSkybox();
+	void RenderImGuiDockSpace();
 
 	// ImGui state variables
 	bool m_showAxes = true;

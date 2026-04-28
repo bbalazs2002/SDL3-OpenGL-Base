@@ -4,6 +4,7 @@
 #include "../Utils/Log.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -299,8 +300,59 @@ void MyApp::Render()
 		RenderAxes();
 	}
 }
+void MyApp::RenderImGuiDockSpace() {
+	ImGuiID dockspace_id;
+
+	// Make a fullscreen invisible window to host the dockspace
+	{
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->Pos);
+		ImGui::SetNextWindowSize(viewport->Size);
+		ImGui::SetNextWindowViewport(viewport->ID);
+
+		ImGuiWindowFlags host_flags =
+			ImGuiWindowFlags_NoTitleBar |
+			ImGuiWindowFlags_NoCollapse |
+			ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoBringToFrontOnFocus |
+			ImGuiWindowFlags_NoNavFocus |
+			ImGuiWindowFlags_NoBackground;
+
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::Begin("DockspaceHost", nullptr, host_flags);
+		dockspace_id = ImGui::GetID("MainDockspace");
+		ImGui::PopStyleVar(3);
+
+		ImGui::DockSpace(dockspace_id, ImVec2(0, 0), ImGuiDockNodeFlags_PassthruCentralNode);
+
+		ImGui::End();
+	}
+
+	// Init docked windows layout
+	static bool ImGuiLayoutInitialized = false;
+	if (!ImGuiLayoutInitialized) {
+		ImGui::DockBuilderRemoveNode(dockspace_id);
+		ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+		ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetMainViewport()->Size);
+
+		ImGuiID dock_right, dock_left;
+
+		// Split left from the area
+		ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.4f, &dock_left, &dock_right);
+		ImGui::DockBuilderDockWindow("Options window", dock_left);
+
+		ImGui::DockBuilderFinish(dockspace_id);
+
+		ImGuiLayoutInitialized = true;
+	}
+}
 void MyApp::RenderGUI()
 {
+	RenderImGuiDockSpace();
+
 	ImGui::Begin("Options window");
 	{
 		ImGui::Text("Render resolution %dx%d", m_width, m_height);
@@ -330,15 +382,6 @@ void MyApp::KeyboardDown(const SDL_KeyboardEvent& key)
 		{
 			CleanShaders();
 			InitShaders();
-		}
-		if (key.key == SDLK_F1) // F1
-		{
-			GLint polygonModeFrontAndBack[2] = {};
-			// https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGet.xhtml
-			glGetIntegerv(GL_POLYGON_MODE, polygonModeFrontAndBack); // Query the current polygon mode. It gives the front and back modes separately.
-			GLenum polygonMode = (polygonModeFrontAndBack[0] != GL_FILL ? GL_FILL : GL_LINE); // Switch between FILL and LINE
-			// https://registry.khronos.org/OpenGL-Refpages/gl4/html/glPolygonMode.xhtml
-			glPolygonMode(GL_FRONT_AND_BACK, polygonMode); // Set the new polygon mode
 		}
 	}
 	m_cameraManipulator.KeyboardDown(key);

@@ -101,6 +101,11 @@ int main(int argc, char* args[]) {
     // --- 5. Initialize ImGui ---
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;       // Enable docking
+#ifdef IMGUI_VIEWPORTSENABLE
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;     // Enable separate windows for ImGui
+#endif
     ImGui::StyleColorsDark();
     ImGui_ImplSDL3_InitForOpenGL(win, context);
     ImGui_ImplOpenGL3_Init();
@@ -209,6 +214,16 @@ int main(int argc, char* args[]) {
 
             ImGui::Render();
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+#ifdef IMGUI_VIEWPORTSENABLE
+            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+                SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+                SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderAdditionalPlatformWindows();
+                SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+            }
+#endif
 
             SDL_GL_SwapWindow(win);
         }

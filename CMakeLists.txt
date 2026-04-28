@@ -27,6 +27,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     PROJECT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/"     # Define the project root directory path for the source code
     GLM_ENABLE_EXPERIMENTAL                         # Enable experimental GLM extensions globally
     $<$<CONFIG:Debug>:DEBUG>                        # Define DEBUG macro when CMake is in Debug mode
+    # IMGUI_VIEWPORTSENABLE                         # Enable separate windows for ImGui
 )
 
 # 4. Link libraries (using the specific vcpkg targets)
