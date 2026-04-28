@@ -10,7 +10,6 @@ out vec4 fs_out_col;
 
 // camera
 #include "../Modules/Camera/Camera_uniforms.glsl"
-#include "../Modules/Camera/Camera.glsl"
 
 // material
 #include "../Modules/Material/Material_uniforms.glsl"
